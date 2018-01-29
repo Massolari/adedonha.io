@@ -1,12 +1,156 @@
 <html>
-    <head>
+
+<head>
 	<title>Adedonha</title>
 	<meta charset="utf-8" />
-	<script src="/socket.io/socket.io.js"></script>	
-    </head>
-    <body>
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="/vue/dist/vue.js"></script>
+	<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
+</head>
+
+<body>
 	<script>const socket = io()</script>
-	<div id="app">
+	<div id="app" class="container">
+		<h2>Adedonha</h2>
+		<div v-if="!logado">
+			<form @submit.prevent="logar">
+				<div class="input-group">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Nome</span>
+					</div>
+					<input type="text" class="form-control" v-model="nome">
+					<button :disabled="alguemCriando" class="btn btn-primary">{{ botaoEntrar }}</button>
+				</div>
+			</form>
+		</div>
+		<div v-if="logado && !jogoCriado">
+			<form @submit.prevent="criar">
+				<div class="input-group" v-for="a in assuntos" :key="a.id">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Nome</span>
+					</div>
+					<input type="text" class="form-control" v-model="a.nome" required>
+					<button :disabled="assuntos.length === 1" @click="removerAssunto(a.id)" type="button" class="btn btn-danger">Remover</button>
+				</div>
+				<button @click="adicionarAssunto" type="button" class="btn btn-primary">Adicionar</button>
+				<div class="input-group">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Tempo</span>
+					</div>
+					<input type="text" class="form-control" v-model="tempoCriacao" required>
+				</div>
+				<button class="btn btn-primary">Criar</button>
+			</form>
+		</div>
+		<div v-if="logado && jogoCriado">
+			<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
+			<p>{{ (jogadores.length === 1) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
+			<h2>Letra: {{ letra }}</h2>
+			<div class="input-group" v-for="a in assuntos" :key="a.id">
+				<div class="input-group-prepend">
+					<span class="input-group-text">{{ a.nome }}</span>
+				</div>
+				<input type="text" class="form-control" :disabled="fimPartida" v-model="a.resposta">
+				<div v-show="fimPartida" class="input-group-prepend">
+					<span class="input-group-text">Pontos</span>
+				</div>
+				<input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
+			</div>
+			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
+			<ul>
+				<li v-for="j in jogadores">{{ j.nome }} - Pontos: {{ j.pontos }}</li>
+			</ul>
+		</div>
 	</div>
-    </body>
+	<script>
+		socket.on("criando", v => {
+			app.alguemCriando = v
+		})
+		socket.on("jogo", jogo => {
+			app.jogoCriado = jogo.criado
+			app.alguemCriando = jogo.criando
+		})
+		socket.on("novoJogador", jogadores => {
+			app.jogadores = jogadores
+		})
+		socket.on("novaRodada", dados => {
+			app.fimPartida = false
+			app.letra = dados.letra
+			app.assuntos = dados.assuntos.map(a => ({
+				id: a.id,
+				nome: a.nome,
+				pontos: 0,
+				resposta: ""
+			}))
+			app.jogadores = dados.jogadores
+		})
+		socket.on("fim", v => {
+			app.fimPartida = v
+			app.pontosConfirmados = false
+		})
+		const app = new Vue({
+			el: "#app",
+			data: {
+				logado: false,
+				nome: "",
+				jogoCriado: false,
+				alguemCriando: false,
+				assuntos: [{ id: 1, nome: "" }],
+				tempoCriacao: 0,
+				pontos: 0,
+				fimPartida: false,
+				jogadores: [],
+				letra: "Aguardando...",
+				pontosConfirmados: false
+			},
+			methods: {
+				logar() {
+					this.logado = true
+					if (this.jogoCriado) {
+						socket.emit("entrar", {
+							nome: this.nome
+						})
+						return
+					}
+					socket.emit("criando", this.nome)
+				},
+				adicionarAssunto() {
+					let max = 0
+					this.assuntos.forEach(a => {
+						if (a.id > max) {
+							max = a.id
+						}
+					})
+					this.assuntos.push({ id: max + 1, nome: "" })
+				},
+				removerAssunto(id) {
+					this.assuntos = this.assuntos.filter(a => a.id !== id)
+				},
+				criar() {
+					socket.emit("criar", {
+						assuntos: this.assuntos,
+						nome: this.nome,
+						tempo: this.tempoCriacao
+					})
+					this.assuntos = []
+					this.jogoCriado = true
+				},
+				confirmarPontos() {
+					this.pontosConfirmados = true
+					this.pontos += this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
+					socket.emit("confirmados")
+				}
+			},
+			computed: {
+				botaoEntrar() {
+					if (this.alguemCriando) {
+						return "Alguém está criando o jogo..."
+					}
+					return (this.jogoCriado) ? "Entrar" : "Criar"
+				}
+			}
+		})
+	</script>
+</body>
+
 </html>
