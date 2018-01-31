@@ -3,6 +3,7 @@
 <head>
 	<title>Adedonha</title>
 	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<script src="/socket.io/socket.io.js"></script>
 	<script type="text/javascript" src="/vue/dist/vue.js"></script>
 	<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
@@ -10,8 +11,10 @@
 
 <body>
 	<script>const socket = io()</script>
-	<div id="app" class="container">
-		<h2>Adedonha</h2>
+	<div id="app" class="container-fluid">
+		<div class="row">
+		    <div class="col-sm-6"><h2>Adedonha</h2>
+		
 		<div v-if="!logado">
 			<form @submit.prevent="logar">
 				<div class="input-group">
@@ -43,9 +46,13 @@
 			</form>
 		</div>
 		<div v-if="logado && jogoCriado">
+			<hr />
 			<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
-			<p>{{ (jogadores.length === 1) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
+			<p>{{ (jogadores.length === 0) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
 			<h2>Letra: {{ letra }}</h2>
+			<div class="progress">
+				<div class="progress-bar" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow=100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
+			</div>
 			<div class="input-group" v-for="a in assuntos" :key="a.id">
 				<div class="input-group-prepend">
 					<span class="input-group-text">{{ a.nome }}</span>
@@ -57,98 +64,106 @@
 				<input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
 			</div>
 			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
-			<ul>
-				<li v-for="j in jogadores">{{ j.nome }} - Pontos: {{ j.pontos }}</li>
-			</ul>
+			<hr />
+			<h4>Ranking</h4>
+			<ol>
+				<li v-for="j in jogadoresOrdenados">{{ j.nome }} - Pontos: {{ j.pontos }}</li>
+			</ol>
 		</div>
-	</div>
+		    </div></div></div>
 	<script>
 		socket.on("criando", v => {
-			app.alguemCriando = v
+		    app.alguemCriando = v
 		})
 		socket.on("jogo", jogo => {
-			app.jogoCriado = jogo.criado
-			app.alguemCriando = jogo.criando
+		    app.jogoCriado = jogo.criado
+		    app.alguemCriando = jogo.criando
 		})
 		socket.on("novoJogador", jogadores => {
-			app.jogadores = jogadores
+		    app.jogadores = jogadores
+		})
+		socket.on("tempo", tempo => {
+		    app.barraTempo = tempo
 		})
 		socket.on("novaRodada", dados => {
-			app.fimPartida = false
-			app.letra = dados.letra
-			app.assuntos = dados.assuntos.map(a => ({
-				id: a.id,
-				nome: a.nome,
-				pontos: 0,
-				resposta: ""
-			}))
-			app.jogadores = dados.jogadores
+		    app.barraTempo = 100
+		    app.fimPartida = false
+		    app.letra = dados.letra
+		    app.assuntos = dados.assuntos.map(a => ({
+		        id: a.id,
+			nome: a.nome,
+			pontos: 0,
+			resposta: ""
+		    }))
+		    app.jogadores = dados.jogadores
 		})
 		socket.on("fim", v => {
-			app.fimPartida = v
-			app.pontosConfirmados = false
+		    app.fimPartida = v
+		    app.pontosConfirmados = false
 		})
 		const app = new Vue({
-			el: "#app",
-			data: {
-				logado: false,
-				nome: "",
-				jogoCriado: false,
-				alguemCriando: false,
-				assuntos: [{ id: 1, nome: "" }],
-				tempoCriacao: 0,
-				pontos: 0,
-				fimPartida: false,
-				jogadores: [],
-				letra: "Aguardando...",
-				pontosConfirmados: false
+		    el: "#app",
+		    data: {
+			logado: false,
+			nome: "",
+			jogoCriado: false,
+			alguemCriando: false,
+			assuntos: [{ id: 1, nome: "" }],
+			tempoCriacao: 0,
+			pontos: 0,
+			fimPartida: false,
+			jogadores: [],
+			letra: "Aguardando...",
+			pontosConfirmados: false,
+			barraTempo: 100
+		    },
+		    methods: {
+		        logar() {
+			    this.logado = true
+			    if (this.jogoCriado) {
+			        socket.emit("entrar", this.nome)
+				return
+			    }
+			    socket.emit("criando", this.nome)
 			},
-			methods: {
-				logar() {
-					this.logado = true
-					if (this.jogoCriado) {
-						socket.emit("entrar", {
-							nome: this.nome
-						})
-						return
-					}
-					socket.emit("criando", this.nome)
-				},
-				adicionarAssunto() {
-					let max = 0
-					this.assuntos.forEach(a => {
-						if (a.id > max) {
-							max = a.id
-						}
-					})
-					this.assuntos.push({ id: max + 1, nome: "" })
-				},
-				removerAssunto(id) {
-					this.assuntos = this.assuntos.filter(a => a.id !== id)
-				},
-				criar() {
-					socket.emit("criar", {
-						assuntos: this.assuntos,
-						nome: this.nome,
-						tempo: this.tempoCriacao
-					})
-					this.assuntos = []
-					this.jogoCriado = true
-				},
-				confirmarPontos() {
-					this.pontosConfirmados = true
-					this.pontos += this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
-					socket.emit("confirmados")
+			adicionarAssunto() {
+			    let max = 0
+			    this.assuntos.forEach(a => {
+				if (a.id > max) {
+				    max = a.id
 				}
+			    })
+			    this.assuntos.push({ id: max + 1, nome: "" })
 			},
-			computed: {
-				botaoEntrar() {
-					if (this.alguemCriando) {
-						return "Alguém está criando o jogo..."
-					}
-					return (this.jogoCriado) ? "Entrar" : "Criar"
-				}
+			removerAssunto(id) {
+			    this.assuntos = this.assuntos.filter(a => a.id !== id)
+			},
+			criar() {
+			    socket.emit("criar", {
+				assuntos: this.assuntos,
+				nome: this.nome,
+				tempo: this.tempoCriacao
+			    })
+			    this.assuntos = []
+			    this.jogoCriado = true
+			},
+			confirmarPontos() {
+			    this.pontosConfirmados = true
+			    this.pontos += this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
+			    socket.emit("confirmados", this.pontos)
 			}
+		    },
+		    computed: {
+			botaoEntrar() {
+			    if (this.alguemCriando) {
+				return "Alguém está criando o jogo..."
+			    }
+			    return (this.jogoCriado) ? "Entrar" : "Criar"
+			},
+			jogadoresOrdenados() {
+			    return this.jogadores.sort((a, b) => - (a.pontos - b.pontos))
+			}
+		    }
 		})
 	</script>
 </body>

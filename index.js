@@ -12,7 +12,8 @@ const jogo = {
     rodadas: 0,
     tempo: 0,
     assuntos: [],
-    confirmados: 0
+    confirmados: 0,
+    tempoAtual: 0
 }
 let criando = false
 const adedonha = {
@@ -110,18 +111,30 @@ io.on("connection", socket => {
                 jogadores: jogo.jogadores,
                 rodadas: jogo.rodadas
             }
-            socket.broadcast.emit("novaRodada", dados)
-            socket.emit("novaRodada", dados)
-            setTimeout(() => {
-                socket.broadcast.emit("fim", true)
-                socket.emit("fim", true)
-            }, jogo.tempo)
+            socket.broadcast.emit("novaRodada", jogo)
+            socket.emit("novaRodada", jogo)
+	    jogo.tempoAtual = 100
+            const timer = setInterval(() => {
+		if (jogo.tempoAtual <= 0) {
+                    socket.broadcast.emit("fim", true)
+                    socket.emit("fim", true)
+		    clearInterval(timer)
+		}
+		socket.emit("tempo", --jogo.tempoAtual)
+		socket.broadcast.emit("tempo", jogo.tempoAtual)
+            }, jogo.tempo/100)
             return
         }
+        socket.emit("novaRodada", jogo)
     })
 
-    socket.on("confirmados", () => {
+    socket.on("confirmados", pontos => {
         jogo.confirmados++
+	jogo.jogadores.forEach(j => {
+	    if (j.nome === socket.nome) {
+		j.pontos = pontos
+	    }
+	})
         console.log(`Confirmados: ${jogo.confirmados}
 Jogadores: ${jogo.jogadores.length}`)
         if (jogo.confirmados === jogo.jogadores.length) {
@@ -136,10 +149,16 @@ Jogadores: ${jogo.jogadores.length}`)
             }
             socket.broadcast.emit("novaRodada", dados)
             socket.emit("novaRodada", dados)
-            setTimeout(() => {
-                socket.broadcast.emit("fim", true)
-                socket.emit("fim", true)
-            }, jogo.tempo)
+	    jogo.tempoAtual = 100
+	    const timer = setInterval(() => {
+                if (jogo.tempoAtual <= 0) {
+                    socket.broadcast.emit("fim", true)
+		    socket.emit("fim", true)
+		    clearInterval(timer)
+                }
+		socket.emit("tempo", --jogo.tempoAtual)
+		socket.broadcast.emit("tempo", jogo.tempoAtual)
+	    }, jogo.tempo/100)
         }
     })
 
