@@ -6,6 +6,9 @@ const path = require("path")
 
 app.use(express.static(path.join(__dirname, "node_modules")))
 
+let timer
+let idSocket = 0
+
 const jogo = {
     letra: "",
     jogadores: [],
@@ -13,7 +16,29 @@ const jogo = {
     tempo: 0,
     assuntos: [],
     confirmados: 0,
-    tempoAtual: 0
+    tempoAtual: 0,
+    timer: "",
+    novaRodada() {
+        if (this.rodadas === 0) {
+            adedonha.recomecar()
+        }
+        this.letra = adedonha.sortear()
+        this.rodadas++
+        io.emit("novaRodada", this)
+        this.tempoAtual = 100
+        timer = setInterval(() => {
+            if (this.tempoAtual <= 0) {
+                this.tempoAtual = 100
+                io.emit("tempo", this.tempoAtual)
+                io.emit("fim", true)
+                clearInterval(timer)
+            }
+            io.emit("tempo", --this.tempoAtual)
+        }, this.tempo/100)
+    },
+    parar() {
+        clearInterval(timer)
+    }
 }
 let criando = false
 const adedonha = {
@@ -30,6 +55,7 @@ const adedonha = {
             "H",
             "I",
             "J",
+            "K",
             "L",
             "M",
             "N",
@@ -68,6 +94,7 @@ app.get("/", (req, res) => {
 })
 
 io.on("connection", socket => {
+    socket.id = idSocket++
     console.log("A user connected...")
     socket.emit("jogo", {
         criado: jogo.assuntos.length > 0,
@@ -75,14 +102,14 @@ io.on("connection", socket => {
     })
 
     socket.on("criando", val => {
-        socket.nome = val
-        criando = val
+        criando = socket.id
         socket.broadcast.emit("criando", true)
     })
 
     socket.on("criar", criacao => {
         jogo.assuntos = criacao.assuntos
         jogo.jogadores.push({
+            id: socket.id,
             nome: criacao.nome,
             pontos: 0
         })
@@ -92,73 +119,45 @@ io.on("connection", socket => {
             criado: jogo.assuntos.length > 0,
             criando
         })
+        io.emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("entrar", nome => {
-        socket.nome = nome
         jogo.jogadores.push({
+            id: socket.id,
             nome,
             pontos: 0
         })
-        socket.broadcast.emit("novoJogador", jogo.jogadores)
+        io.emit("atualizarJogadores", jogo.jogadores)
         if (jogo.rodadas === 0) {
-            adedonha.recomecar()
-            jogo.letra = adedonha.sortear()
-            jogo.rodadas++
-            const dados = {
-                letra: jogo.letra,
-                assuntos: jogo.assuntos,
-                jogadores: jogo.jogadores,
-                rodadas: jogo.rodadas
-            }
-            socket.broadcast.emit("novaRodada", jogo)
-            socket.emit("novaRodada", jogo)
-	    jogo.tempoAtual = 100
-            const timer = setInterval(() => {
-		if (jogo.tempoAtual <= 0) {
-                    socket.broadcast.emit("fim", true)
-                    socket.emit("fim", true)
-		    clearInterval(timer)
-		}
-		socket.emit("tempo", --jogo.tempoAtual)
-		socket.broadcast.emit("tempo", jogo.tempoAtual)
-            }, jogo.tempo/100)
+            jogo.novaRodada()
             return
         }
         socket.emit("novaRodada", jogo)
     })
 
+    socket.on("comecar", () => {
+        jogo.confirmados++
+        if (jogo.jogadores.length === jogo.confirmados) {
+            jogo.confirmados = 0
+            jogo.novaRodada()
+        }
+    })
+
     socket.on("confirmados", pontos => {
         jogo.confirmados++
-	jogo.jogadores.forEach(j => {
-	    if (j.nome === socket.nome) {
-		j.pontos = pontos
-	    }
-	})
+	    jogo.jogadores.forEach(j => {
+            if (j.id === socket.id) {
+                j.pontos = pontos
+            }
+        })
         console.log(`Confirmados: ${jogo.confirmados}
-Jogadores: ${jogo.jogadores.length}`)
+Jogadores: ${jogo.jogadores.length}
+Jogador: ${socket.nome}
+Pontos: ${pontos}`)
         if (jogo.confirmados === jogo.jogadores.length) {
             jogo.confirmados = 0
-            const letra = adedonha.sortear()
-            jogo.rodadas++
-            const dados = {
-                letra,
-                assuntos: jogo.assuntos,
-                jogadores: jogo.jogadores,
-                rodadas: jogo.rodadas
-            }
-            socket.broadcast.emit("novaRodada", dados)
-            socket.emit("novaRodada", dados)
-	    jogo.tempoAtual = 100
-	    const timer = setInterval(() => {
-                if (jogo.tempoAtual <= 0) {
-                    socket.broadcast.emit("fim", true)
-		    socket.emit("fim", true)
-		    clearInterval(timer)
-                }
-		socket.emit("tempo", --jogo.tempoAtual)
-		socket.broadcast.emit("tempo", jogo.tempoAtual)
-	    }, jogo.tempo/100)
+            jogo.novaRodada()
         }
     })
 
@@ -166,14 +165,28 @@ Jogadores: ${jogo.jogadores.length}`)
         if (criando === socket.nome) {
             criando = false
         }
+        jogo.jogadores = jogo.jogadores.filter(j => j.id !== socket.id)
         socket.broadcast.emit("jogo", {
             criado: jogo.assuntos.length > 0,
             criando
         })
-        jogo.jogadores = jogo.jogadores.filter(j => j.nome !== socket.nome)
+        socket.broadcast.emit("atualizarJogadores", jogo.jogadores)
         if (jogo.jogadores.length === 0) {
             jogo.assuntos = []
             jogo.rodadas = 0
+            return
+        }
+        if (jogo.jogadores.length === 1) {
+            jogo.rodadas = 0
+            jogo.letra = "Aguardando..."
+            jogo.jogadores[0].pontos = 0
+            jogo.parar()
+            io.emit("novaRodada", jogo)
+            return
+        }
+        if (jogo.confirmados === jogo.jogadores.length) {
+            jogo.confirmados = 0
+            jogo.novaRodada()
         }
     })
 })
