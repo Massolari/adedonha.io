@@ -9,44 +9,6 @@ app.use(express.static(path.join(__dirname, "node_modules")))
 let timer
 let idSocket = 0
 
-const jogo = {
-    letra: "",
-    jogadores: [],
-    rodadas: 0,
-    tempo: 0,
-    assuntos: [],
-    confirmados: 0,
-    tempoAtual: 0,
-    novaRodada() {
-	this.terminados = 0
-	this.jogadores.forEach(j => {
-	    j.terminou = false
-	})
-        if (this.rodadas === 0) {
-            adedonha.recomecar()
-        }
-        this.letra = adedonha.sortear()
-        this.rodadas++
-        io.emit("novaRodada", this)
-        this.tempoAtual = 100
-        timer = setInterval(() => {
-            if (this.tempoAtual <= 0) {
-		this.terminarRodada()
-            }
-            io.emit("tempo", --this.tempoAtual)
-        }, this.tempo/100)
-    },
-    parar() {
-        clearInterval(timer)
-    },
-    terminarRodada() {
-	clearInterval(timer)
-	this.tempoAtual = 100
-	io.emit("tempo", this.tempoAtual)
-	io.emit("fim", true)
-    }
-}
-let criando = false
 const adedonha = {
     letras: [],
     retornarLetras(){
@@ -95,47 +57,147 @@ const adedonha = {
     }
 }
 
+const jogo = {
+    letra: "",
+    jogadores: [],
+    rodadas: 0,
+    tempo: 0,
+    assuntos: [],
+    confirmados: 0,
+    tempoAtual: 0,
+    criando: false,
+    novaRodada() {
+        if (this.rodadas === 0) {
+            adedonha.recomecar()
+        }
+        this.jogadores.forEach(j => {
+            j.confirmou = false
+        })
+        this.letra = adedonha.sortear()
+        this.rodadas++
+        io.emit("novaRodada", this)
+        this.tempoAtual = 100
+        timer = setInterval(() => {
+            if (this.tempoAtual <= 0) {
+                this.terminarRodada()
+            }
+            io.emit("tempo", --this.tempoAtual)
+        }, this.tempo/100)
+    },
+    parar() {
+        clearInterval(timer)
+    },
+    terminarRodada() {
+        clearInterval(timer)
+        this.jogadores.forEach(j => {
+            j.terminou = false
+        })
+        this.tempoAtual = 100
+        io.emit("tempo", this.tempoAtual)
+        io.emit("fim", true)
+        io.emit("atualizarJogadores", this.jogadores)
+    },
+    adicionarJogador(id, nome) {
+        this.jogadores.push({
+            id,
+            nome,
+            pontos: 0,
+            terminou: false,
+            confirmou: false
+        })
+    },
+    removerJogador(id) {
+        this.jogadores = this.jogadores.filter(j => j.id !== id)
+    },
+    jogadorTerminou(id) {
+        this.jogadores.forEach(j => {
+            if (j.id === id) {
+                j.terminou = true
+            }
+        })
+        if (this.jogadores.filter(j => !j.terminou).length === 0) {
+            this.terminarRodada()
+        }
+    },
+    jogadorConfirmou(id, pontos) {
+        console.log(`Confirmando = ID: ${id} | Pontos: ${pontos}`)
+	    this.jogadores.forEach(j => {
+            if (j.id === id) {
+                j.pontos = pontos
+                j.confirmou = true
+            }
+        })
+        console.log(`Ainda faltam ${this.jogadores.filter(j => !j.confirmou).length} jogadores confirmar...`)
+        if (this.jogadores.filter(j => !j.confirmou).length === 0) {
+            this.novaRodada()
+        }
+    },
+    jogadorSaiu(socket) {
+        if (this.criando === socket.id) {
+            this.criando = false
+            socket.broadcast.emit("jogo", this.dadosCriacao())
+        }
+        this.removerJogador(socket.id)
+        socket.broadcast.emit("atualizarJogadores", this.jogadores)
+        if (this.jogadores.length === 0) {
+            this.assuntos = []
+            this.rodadas = 0
+            return
+        }
+        if (this.jogadores.length === 1) {
+            this.rodadas = 0
+            this.letra = "Aguardando..."
+            this.jogadores[0].pontos = 0
+            this.parar()
+            io.emit("novaRodada", jogo)
+            return
+        }
+        if (this.jogadores.filter(j => !j.terminou).length === 0) {
+            this.terminarRodada()
+        }
+        if (this.jogadores.filter(j => !j.confirmou).length === 0) {
+            this.novaRodada()
+        }
+    },
+    dadosCriacao() {
+        return {
+            criando: this.criando,
+            criado: this.assuntos.length > 0
+        }
+    },
+    jogadorCriando(id) {
+        this.criando = id
+    },
+    jogadorCriou(dados) {
+        this.assuntos = dados.assuntos
+        this.adicionarJogador(this.criando, dados.nome)
+        this.tempo = 1000 * dados.tempo
+        this.criando = false
+    }
+}
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"))
 })
 
 io.on("connection", socket => {
     socket.id = idSocket++
-    console.log("A user connected...")
-    socket.emit("jogo", {
-        criado: jogo.assuntos.length > 0,
-        criando
-    })
+    console.log(`A user connected with id ${socket.id}...`)
+    socket.emit("jogo", jogo.dadosCriacao())
 
-    socket.on("criando", val => {
-        criando = socket.id
+    socket.on("criando", () => {
+        jogo.jogadorCriando(socket.id)
         socket.broadcast.emit("criando", true)
     })
 
     socket.on("criar", criacao => {
-        jogo.assuntos = criacao.assuntos
-        jogo.jogadores.push({
-            id: socket.id,
-            nome: criacao.nome,
-            pontos: 0,
-	    terminou: false
-        })
-        jogo.tempo = 1000 * criacao.tempo
-        criando = false
-        socket.broadcast.emit("jogo", {
-            criado: jogo.assuntos.length > 0,
-            criando
-        })
+        jogo.jogadorCriou(criacao)
+        socket.broadcast.emit("jogo", jogo.dadosCriacao())
         io.emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("entrar", nome => {
-        jogo.jogadores.push({
-            id: socket.id,
-            nome,
-            pontos: 0,
-	    terminou: false
-        })
+        jogo.adicionarJogador(socket.id, nome)
         io.emit("atualizarJogadores", jogo.jogadores)
         if (jogo.rodadas === 0) {
             jogo.novaRodada()
@@ -153,65 +215,17 @@ io.on("connection", socket => {
     })
 
     socket.on("terminei", () => {
-        jogo.terminados++
-	if (jogo.terminados === jogo.jogadores.length) {
-	    jogo.terminarRodada()
-	}
-	jogo.jogadores.forEach(j => {
-	    if (j.id === socket.id) {
-		j.terminou = true
-	    }
-	})
-	io.emit("atualizarJogadores", jogo.jogadores)
+        jogo.jogadorTerminou(socket.id)
+	    io.emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("confirmados", pontos => {
-        jogo.confirmados++
-	jogo.jogadores.forEach(j => {
-            if (j.id === socket.id) {
-                j.pontos = pontos
-            }
-        })
-        console.log(`Confirmados: ${jogo.confirmados}
-Jogadores: ${jogo.jogadores.length}
-Jogador: ${socket.nome}
-Pontos: ${pontos}`)
-        if (jogo.confirmados === jogo.jogadores.length) {
-            jogo.confirmados = 0
-            jogo.novaRodada()
-        }
+        jogo.jogadorConfirmou(socket.id, pontos)
+        io.emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("disconnect", () => {
-        if (criando === socket.id) {
-            criando = false
-        }
-        jogo.jogadores = jogo.jogadores.filter(j => j.id !== socket.id)
-        socket.broadcast.emit("jogo", {
-            criado: jogo.assuntos.length > 0,
-            criando
-        })
-        socket.broadcast.emit("atualizarJogadores", jogo.jogadores)
-        if (jogo.jogadores.length === 0) {
-            jogo.assuntos = []
-            jogo.rodadas = 0
-            return
-        }
-        if (jogo.jogadores.length === 1) {
-            jogo.rodadas = 0
-            jogo.letra = "Aguardando..."
-            jogo.jogadores[0].pontos = 0
-            jogo.parar()
-            io.emit("novaRodada", jogo)
-            return
-        }
-	if (jogo.terminados === jogo.jogadores.length) {
-	    jogo.terminarRodada()
-	}
-        if (jogo.confirmados === jogo.jogadores.length) {
-            jogo.confirmados = 0
-            jogo.novaRodada()
-        }
+        jogo.jogadorSaiu(socket)
     })
 })
 

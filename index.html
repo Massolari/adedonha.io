@@ -51,7 +51,7 @@
 			<p>{{ (jogadores.length === 1) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
 			<h2>Letra: {{ letra }}</h2><span>Rodada: {{ rodadas }}</span>
 			<div class="progress">
-				<div class="progress-bar" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow=100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
+				<div class="progress-bar" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow="100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
 			</div>
 			<div class="input-group" v-for="a in assuntos" :key="a.id">
 				<div class="input-group-prepend">
@@ -69,11 +69,11 @@
 				<!-- input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos" -->
 			</div>
 			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
-			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 0" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei!" }}</button>
+			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei!" }}</button>
 			<hr />
 			<h4>Ranking</h4>
 			<ol>
-				<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}` }}</li>
+				<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}${(j.confirmou) ? "Confirmou!" : ""}` }}</li>
 			</ol>
 		</div>
 		    </div></div></div>
@@ -119,7 +119,7 @@
 				nome: "",
 				jogoCriado: false,
 				alguemCriando: false,
-				assuntos: [{ id: 1, nome: "" }],
+				assuntos: [{ id: 1, nome: "", resposta: "" }],
 				tempoCriacao: 0,
 				pontos: 0,
 				fimPartida: false,
@@ -137,7 +137,7 @@
 						socket.emit("entrar", this.nome)
 						return
 					}
-					socket.emit("criando", this.nome)
+					socket.emit("criando")
 				},
 				adicionarAssunto() {
 					let max = 0
