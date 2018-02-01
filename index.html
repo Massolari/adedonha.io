@@ -57,7 +57,7 @@
 				<div class="input-group-prepend">
 					<span class="input-group-text">{{ a.nome }}</span>
 				</div>
-				<input type="text" class="form-control" :disabled="fimPartida" v-model="a.resposta">
+				<input type="text" class="form-control" :disabled="fimPartida || terminei" v-model="a.resposta">
 				<div v-show="fimPartida" class="input-group-prepend">
 					<span class="input-group-text">Pontos</span>
 				</div>
@@ -69,10 +69,11 @@
 				<!-- input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos" -->
 			</div>
 			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
+			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 0" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei!" }}</button>
 			<hr />
 			<h4>Ranking</h4>
 			<ol>
-				<li v-for="j in jogadoresOrdenados">{{ j.nome }} - Pontos: {{ j.pontos }}</li>
+				<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}` }}</li>
 			</ol>
 		</div>
 		    </div></div></div>
@@ -107,6 +108,7 @@
 		    app.jogadores = dados.jogadores
 		})
 		socket.on("fim", v => {
+		    app.terminei = false
 		    app.fimPartida = v
 		    app.pontosConfirmados = false
 		})
@@ -125,7 +127,8 @@
 				letra: "Aguardando...",
 				pontosConfirmados: false,
 				barraTempo: 100,
-				rodadas: 0
+				rodadas: 0,
+			        terminei: false
 		    },
 		    methods: {
 		        logar() {
@@ -163,6 +166,12 @@
 						this.pontos += this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
 						socket.emit("confirmados", this.pontos)
 					}
+				},
+			        terminar() {
+				    if (confirm("Terminou de preencher as palavras?")) {
+					this.terminei = true
+					socket.emit("terminei")
+				    }
 				}
 		    },
 		    computed: {

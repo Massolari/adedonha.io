@@ -17,8 +17,11 @@ const jogo = {
     assuntos: [],
     confirmados: 0,
     tempoAtual: 0,
-    timer: "",
     novaRodada() {
+	this.terminados = 0
+	this.jogadores.forEach(j => {
+	    j.terminou = false
+	})
         if (this.rodadas === 0) {
             adedonha.recomecar()
         }
@@ -28,16 +31,19 @@ const jogo = {
         this.tempoAtual = 100
         timer = setInterval(() => {
             if (this.tempoAtual <= 0) {
-                this.tempoAtual = 100
-                io.emit("tempo", this.tempoAtual)
-                io.emit("fim", true)
-                clearInterval(timer)
+		this.terminarRodada()
             }
             io.emit("tempo", --this.tempoAtual)
         }, this.tempo/100)
     },
     parar() {
         clearInterval(timer)
+    },
+    terminarRodada() {
+	clearInterval(timer)
+	this.tempoAtual = 100
+	io.emit("tempo", this.tempoAtual)
+	io.emit("fim", true)
     }
 }
 let criando = false
@@ -111,7 +117,8 @@ io.on("connection", socket => {
         jogo.jogadores.push({
             id: socket.id,
             nome: criacao.nome,
-            pontos: 0
+            pontos: 0,
+	    terminou: false
         })
         jogo.tempo = 1000 * criacao.tempo
         criando = false
@@ -126,7 +133,8 @@ io.on("connection", socket => {
         jogo.jogadores.push({
             id: socket.id,
             nome,
-            pontos: 0
+            pontos: 0,
+	    terminou: false
         })
         io.emit("atualizarJogadores", jogo.jogadores)
         if (jogo.rodadas === 0) {
@@ -144,9 +152,22 @@ io.on("connection", socket => {
         }
     })
 
+    socket.on("terminei", () => {
+        jogo.terminados++
+	if (jogo.terminados === jogo.jogadores.length) {
+	    jogo.terminarRodada()
+	}
+	jogo.jogadores.forEach(j => {
+	    if (j.id === socket.id) {
+		j.terminou = true
+	    }
+	})
+	io.emit("atualizarJogadores", jogo.jogadores)
+    })
+
     socket.on("confirmados", pontos => {
         jogo.confirmados++
-	    jogo.jogadores.forEach(j => {
+	jogo.jogadores.forEach(j => {
             if (j.id === socket.id) {
                 j.pontos = pontos
             }
@@ -162,7 +183,7 @@ Pontos: ${pontos}`)
     })
 
     socket.on("disconnect", () => {
-        if (criando === socket.nome) {
+        if (criando === socket.id) {
             criando = false
         }
         jogo.jogadores = jogo.jogadores.filter(j => j.id !== socket.id)
@@ -184,6 +205,9 @@ Pontos: ${pontos}`)
             io.emit("novaRodada", jogo)
             return
         }
+	if (jogo.terminados === jogo.jogadores.length) {
+	    jogo.terminarRodada()
+	}
         if (jogo.confirmados === jogo.jogadores.length) {
             jogo.confirmados = 0
             jogo.novaRodada()
