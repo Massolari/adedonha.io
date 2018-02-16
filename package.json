@@ -10,10 +10,10 @@
   "license": "ISC",
   "dependencies": {
     "bootstrap": "^4.0.0",
+    "bootstrap-vue": "^2.0.0-rc.1",
     "express": "^4.16.2",
     "jquery": "^3.3.1",
     "socket.io": "^2.0.4",
-    "vue": "^2.5.13",
-    "vue-strap": "github:wffranco/vue-strap"
+    "vue": "^2.5.13"
   }
 }

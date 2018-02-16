@@ -8,7 +8,8 @@
 	<script type="text/javascript" src="/vue/dist/vue.js"></script>
 	<script type="text/javascript" src="/jquery/dist/jquery.min.js"></script>
 	<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
-	<script type="text/javascript" src="/bootstrap/dist/js/bootstrap.js"></script>
+	<link rel="stylesheet" href="/bootstrap-vue/dist/bootstrap-vue.css">
+	<script src="/bootstrap-vue/dist/bootstrap-vue.js"></script>
 	<style type="text/css">
 		/* Note: Try to remove the following lines to see the effect of CSS positioning */
 		.affixIn {
@@ -22,7 +23,7 @@
 			position: sticky;
 			top: -1px;
 		}
-			
+
 		.affixOut {
 			font: bold 20px/45px Helvetica, Arial, sans-serif;
 			margin: 0;
@@ -38,7 +39,7 @@
 	<p class="nav navbar-nav">Nav test</p>
 	</nav-->
 	<div id="app" class="container-fluid">
-	
+
 		<div class="row">
 		    <div class="col-sm-6"><h2>Adedonha</h2>
 
@@ -53,8 +54,10 @@
 				</div>
 			</form>
 		</div>
+
+
 		<div v-if="logado && !jogoCriado">
-			<form @submit.prevent="criar">
+			<form @submit.prevent="criarJogo">
 				<div class="input-group" v-for="a in assuntos" :key="a.id">
 					<div class="input-group-prepend">
 						<span class="input-group-text">Nome</span>
@@ -67,21 +70,34 @@
 					<div class="input-group-prepend">
 						<span class="input-group-text">Tempo</span>
 					</div>
-					<input type="text" class="form-control" v-model="tempoCriacao" required>
+					<input type="text" class="form-control" v-model.number="criar.tempoCriacao" required>
+				</div>
+				<div class="card">
+					<div class="card-body">
+						<div style="font-weight: bold">Ao terminar:</div>
+						<div class="form-check">
+							<input type="checkbox" id="criarTempo" class="form-check-input" v-model="criar.tempoMetade" />
+							<label for="criarTempo" class="form-check-label">Tempo cair pela metade</label>
+						</div>
+						<div class="form-check">
+							<input type="checkbox" id="pontosBonus" class="form-check-input" v-model="criar.pontosBonus" />
+							<label for="pontosBonus" class="form-check-label">Ganhar pontos bônus (10% do tempo atual, em segundos)</label>
+						</div>
+					</div>
 				</div>
 				<button class="btn btn-primary">Criar</button>
 			</form>
 		</div>
+
+
 		<div v-if="logado && jogoCriado">
 			<hr />
 			<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
-			<p>{{ (jogadores.length === 1) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
-			<h2>Letra: {{ letra }}</h2><span>Rodada: {{ rodadas }}</span>
-			<!--nav class="navbar navbar-inverse" data-spy="affix" data-offset-top="0"-->	
-				<div class="progress affixOut">
-					<div class="progress-bar progress-bar-striped progress-bar-animated affixIn" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow="100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
-				</div>
-			
+			<p>Jogadores: {{ jogadores.length }}</p>
+			<h2>Letra: {{ letra }}</h2>
+			<span>Rodada: {{ rodadas }}</span>
+			<b-progress :value="barraTempo" :max="barraTempoMax" :variant="corBarraTempo" show-value animated></b-progress>
+
 			<div class="input-group" v-for="a in assuntos" :key="a.id">
 				<div class="input-group-prepend">
 					<span class="input-group-text">{{ a.nome }}</span>
@@ -95,7 +111,6 @@
 					<option value="5">5</option>
 					<option value="10">10</option>
 				</select>
-				<!-- input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos" -->
 			</div>
 			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
 			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1 && !iniciando" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
@@ -106,122 +121,7 @@
 			</ol>
 		</div>
 		    </div></div></div>
-	<script>
-		socket.on("criando", v => {
-		    app.alguemCriando = v
-		})
-		socket.on("jogo", jogo => {
-		    app.jogoCriado = jogo.criado
-		    app.alguemCriando = jogo.criando
-		})
-		socket.on("atualizarJogadores", jogadores => {
-		    app.jogadores = jogadores
-		})
-		socket.on("tempo", tempo => {
-		    app.barraTempo = tempo
-		})
-		socket.on("iniciando", contagem => {
-			app.iniciando = true
-			app.letra = `${contagem}...`
-		})
-		socket.on("novaRodada", dados => {
-			app.iniciando = false
-			if (dados.jogadores.length === 1) {
-				app.pontos = 0
-			}
-		    app.barraTempo = 100
-		    app.fimPartida = false
-			app.letra = dados.letra
-			app.rodadas = dados.rodadas
-		    app.assuntos = dados.assuntos.map(a => ({
-		        id: a.id,
-				nome: a.nome,
-				pontos: 0,
-				resposta: ""
-		    }))
-		    app.jogadores = dados.jogadores
-		})
-		socket.on("fim", v => {
-		    app.terminei = false
-		    app.fimPartida = v
-		    app.pontosConfirmados = false
-		})
-		const app = new Vue({
-		    el: "#app",
-		    data: {
-				logado: false,
-				nome: "",
-				jogoCriado: false,
-				alguemCriando: false,
-				assuntos: [{ id: 1, nome: "", resposta: "" }],
-				tempoCriacao: 0,
-				pontos: 0,
-				fimPartida: false,
-				jogadores: [],
-				letra: "Aguardando...",
-				pontosConfirmados: false,
-				barraTempo: 100,
-				rodadas: 0,
-			    terminei: false,
-			    iniciando: false
-		    },
-		    methods: {
-		        logar() {
-					this.logado = true
-					if (this.jogoCriado) {
-						socket.emit("entrar", this.nome)
-						return
-					}
-					socket.emit("criando")
-				},
-				adicionarAssunto() {
-					let max = 0
-					this.assuntos.forEach(a => {
-						if (a.id > max) {
-							max = a.id
-						}
-					})
-					this.assuntos.push({ id: max + 1, nome: "" })
-				},
-				removerAssunto(id) {
-					this.assuntos = this.assuntos.filter(a => a.id !== id)
-				},
-				criar() {
-					socket.emit("criar", {
-						assuntos: this.assuntos,
-						nome: this.nome,
-						tempo: this.tempoCriacao
-					})
-					this.assuntos = []
-					this.jogoCriado = true
-				},
-				confirmarPontos() {
-					if (confirm("Deseja confirmar seus pontos?")) {
-						this.pontosConfirmados = true
-						this.pontos += this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
-						socket.emit("confirmados", this.pontos)
-					}
-				},
-			        terminar() {
-				    if (confirm("Terminou de preencher as palavras?")) {
-					this.terminei = true
-					socket.emit("terminei")
-				    }
-				}
-		    },
-		    computed: {
-				botaoEntrar() {
-					if (this.alguemCriando) {
-					return "Alguém está criando o jogo..."
-					}
-					return (this.jogoCriado) ? "Entrar" : "Criar"
-				},
-				jogadoresOrdenados() {
-					return this.jogadores.sort((a, b) => - (a.pontos - b.pontos))
-				}
-		    }
-		})
-	</script>
+	<script src="app.js"></script>
 </body>
 
 </html>

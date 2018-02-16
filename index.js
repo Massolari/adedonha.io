@@ -5,6 +5,7 @@ const io = require("socket.io")(http)
 const path = require("path")
 
 app.use(express.static(path.join(__dirname, "node_modules")))
+app.use(express.static(path.join(__dirname)))
 
 let timer
 let idSocket = 0
@@ -66,6 +67,8 @@ const jogo = {
     confirmados: 0,
     tempoAtual: 0,
     criando: false,
+    tempoMetade: false,
+    pontosBonus: false,
     novaRodada() {
     	let contador = 3
     	const contagem = setInterval(() => {
@@ -84,24 +87,24 @@ const jogo = {
         	this.letra = adedonha.sortear()
         	this.rodadas++
         	io.emit("novaRodada", this)
-        	this.tempoAtual = 100
+        	this.tempoAtual = this.tempo
         	timer = setInterval(() => {
             	if (this.tempoAtual <= 0) {
                 	this.terminarRodada()
             	}
-            	io.emit("tempo", --this.tempoAtual)
-        	}, this.tempo/100)
+                io.emit("tempo", this.tempoAtual--)
+        	}, 1000)
         }, 1000)
     },
     parar() {
         clearInterval(timer)
     },
     terminarRodada() {
-        clearInterval(timer)
+        this.parar()
         this.jogadores.forEach(j => {
             j.terminou = false
         })
-        this.tempoAtual = 100
+        this.tempoAtual = this.tempo
         io.emit("tempo", this.tempoAtual)
         io.emit("fim", true)
         io.emit("atualizarJogadores", this.jogadores)
@@ -119,13 +122,20 @@ const jogo = {
         this.jogadores = this.jogadores.filter(j => j.id !== id)
     },
     jogadorTerminou(id) {
-        this.jogadores.forEach(j => {
+        let index
+        this.jogadores.forEach((j, i) => {
             if (j.id === id) {
                 j.terminou = true
+                if (this.pontosBonus) {
+                    j.pontos += Math.floor(this.tempoAtual / 10)
+                }
             }
         })
         if (this.jogadores.filter(j => !j.terminou).length === 0) {
             this.terminarRodada()
+        }
+        if (this.tempoMetade) {
+            this.tempoAtual = Math.ceil(this.tempoAtual / 2)
         }
     },
     jogadorConfirmou(id, pontos) {
@@ -180,8 +190,10 @@ const jogo = {
     jogadorCriou(dados) {
         this.assuntos = dados.assuntos
         this.adicionarJogador(this.criando, dados.nome)
-        this.tempo = 1000 * dados.tempo
+        this.tempo = Number(dados.tempo)
         this.criando = false
+        this.tempoMetade = dados.tempoMetade
+        this.pontosBonus = dados.pontosBonus
     }
 }
 
