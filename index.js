@@ -67,22 +67,31 @@ const jogo = {
     tempoAtual: 0,
     criando: false,
     novaRodada() {
-        if (this.rodadas === 0) {
-            adedonha.recomecar()
-        }
-        this.jogadores.forEach(j => {
-            j.confirmou = false
-        })
-        this.letra = adedonha.sortear()
-        this.rodadas++
-        io.emit("novaRodada", this)
-        this.tempoAtual = 100
-        timer = setInterval(() => {
-            if (this.tempoAtual <= 0) {
-                this.terminarRodada()
-            }
-            io.emit("tempo", --this.tempoAtual)
-        }, this.tempo/100)
+    	let contador = 3
+    	const contagem = setInterval(() => {
+    		io.emit("iniciando", contador)
+    		contador--
+    		if (contador >= 0) {
+    			return
+    		}
+    		clearInterval(contagem)
+        	if (this.rodadas === 0) {
+            	adedonha.recomecar()
+        	}
+        	this.jogadores.forEach(j => {
+            	j.confirmou = false
+        	})
+        	this.letra = adedonha.sortear()
+        	this.rodadas++
+        	io.emit("novaRodada", this)
+        	this.tempoAtual = 100
+        	timer = setInterval(() => {
+            	if (this.tempoAtual <= 0) {
+                	this.terminarRodada()
+            	}
+            	io.emit("tempo", --this.tempoAtual)
+        	}, this.tempo/100)
+        }, 1000)
     },
     parar() {
         clearInterval(timer)

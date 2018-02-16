@@ -6,12 +6,39 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<script src="/socket.io/socket.io.js"></script>
 	<script type="text/javascript" src="/vue/dist/vue.js"></script>
+	<script type="text/javascript" src="/jquery/dist/jquery.min.js"></script>
 	<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
+	<script type="text/javascript" src="/bootstrap/dist/js/bootstrap.js"></script>
+	<style type="text/css">
+		/* Note: Try to remove the following lines to see the effect of CSS positioning */
+		.affixIn {
+			background: #B8C1C8;
+			border-bottom: 1px solid #989EA4;
+			border-top: 1px solid #717D85;
+			color: #FFF;
+			margin: 0;
+			padding: 2px 0 0 12px;
+			position: -webkit-sticky;
+			position: sticky;
+			top: -1px;
+		}
+			
+		.affixOut {
+			font: bold 20px/45px Helvetica, Arial, sans-serif;
+			margin: 0;
+			padding: 0 0 0 12px;
+			white-space: nowrap;
+		}
+	</style>
 </head>
 
 <body>
 	<script>const socket = io()</script>
+	<!--nav class="navbar navbar-inverse" data-spy="affix" data-offset-top="197">
+	<p class="nav navbar-nav">Nav test</p>
+	</nav-->
 	<div id="app" class="container-fluid">
+	
 		<div class="row">
 		    <div class="col-sm-6"><h2>Adedonha</h2>
 
@@ -50,9 +77,11 @@
 			<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
 			<p>{{ (jogadores.length === 1) ? "Aguardando mais jogadores para começar a partida" : `Jogadores: ${jogadores.length}` }}</p>
 			<h2>Letra: {{ letra }}</h2><span>Rodada: {{ rodadas }}</span>
-			<div class="progress">
-				<div class="progress-bar" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow="100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
-			</div>
+			<!--nav class="navbar navbar-inverse" data-spy="affix" data-offset-top="0"-->	
+				<div class="progress affixOut">
+					<div class="progress-bar progress-bar-striped progress-bar-animated affixIn" :class="{ 'bg-warning': barraTempo > 25 && barraTempo <= 50, 'bg-danger': barraTempo <= 25 }" role="progressbar" :style="{ width: `${barraTempo}%` }" aria-valuenow="100"  aria-valuemin="0" aria-valuemax="100">Tempo</div>
+				</div>
+			
 			<div class="input-group" v-for="a in assuntos" :key="a.id">
 				<div class="input-group-prepend">
 					<span class="input-group-text">{{ a.nome }}</span>
@@ -69,7 +98,7 @@
 				<!-- input type="text" v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos" -->
 			</div>
 			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
-			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei!" }}</button>
+			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1 && !iniciando" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
 			<hr />
 			<h4>Ranking</h4>
 			<ol>
@@ -91,7 +120,12 @@
 		socket.on("tempo", tempo => {
 		    app.barraTempo = tempo
 		})
+		socket.on("iniciando", contagem => {
+			app.iniciando = true
+			app.letra = `${contagem}...`
+		})
 		socket.on("novaRodada", dados => {
+			app.iniciando = false
 			if (dados.jogadores.length === 1) {
 				app.pontos = 0
 			}
@@ -128,7 +162,8 @@
 				pontosConfirmados: false,
 				barraTempo: 100,
 				rodadas: 0,
-			        terminei: false
+			    terminei: false,
+			    iniciando: false
 		    },
 		    methods: {
 		        logar() {
