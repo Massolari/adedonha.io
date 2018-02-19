@@ -142,7 +142,7 @@ const jogo = {
         console.log(`Confirmando = ID: ${id} | Pontos: ${pontos}`)
 	    this.jogadores.forEach(j => {
             if (j.id === id) {
-                j.pontos = pontos
+                j.pontos += pontos
                 j.confirmou = true
             }
         })
@@ -205,6 +205,7 @@ io.on("connection", socket => {
     socket.id = idSocket++
     console.log(`A user connected with id ${socket.id}...`)
     socket.emit("jogo", jogo.dadosCriacao())
+    socket.emit("id", socket.id)
 
     socket.on("criando", () => {
         jogo.jogadorCriando(socket.id)
