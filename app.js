@@ -20,9 +20,6 @@ socket.on("iniciando", contagem => {
 })
 socket.on("novaRodada", dados => {
 	app.iniciando = false
-	if (dados.jogadores.length === 1) {
-		app.pontos = 0
-	}
 	app.barraTempo = app.barraTempoMax = dados.tempo
 	app.fimPartida = false
 	app.letra = dados.letra
@@ -36,7 +33,7 @@ socket.on("novaRodada", dados => {
     app.jogadores = dados.jogadores
 })
 socket.on("fim", v => {
-    app.terminei = false
+    // app.terminei = false
     app.fimPartida = v
     app.pontosConfirmados = false
 })
@@ -57,7 +54,7 @@ const app = new Vue({
 		barraTempo: 100,
 		barraTempoMax: 100,
 		rodadas: 0,
-	    terminei: false,
+	    // terminei: false,
 	    iniciando: false,
 	    criar: {
 	    	tempoMetade: false,
@@ -100,13 +97,11 @@ const app = new Vue({
 		confirmarPontos() {
 			if (confirm("Deseja confirmar seus pontos?")) {
 				this.pontosConfirmados = true
-				//this.pontos += _this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0)
 				socket.emit("confirmados", this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0))
 			}
 		},
         terminar() {
 		    if (confirm("Terminou de preencher as palavras?")) {
-				this.terminei = true
 				socket.emit("terminei")
 	    	}
 		}
@@ -122,13 +117,33 @@ const app = new Vue({
 			return this.jogadores.sort((a, b) => - (a.pontos - b.pontos))
 		},
 		corBarraTempo() {
-			return ""
+			if (this.barraTempo <= Math.floor(this.barraTempoMax / 10)) {
+				return "danger"
+			}
+			if (this.barraTempo <= Math.floor(this.barraTempoMax / 2)) {
+				return "warning"
+			}
+			return "success"
 		},
 		pontos() {
 			if (this.jogadores.length === 0) {
 				return 0
 			}
-			return this.jogadores.filter(j => j.id == this.id)[0].pontos
+			const jogador = this.jogadores.filter(j => j.id == this.id)[0]
+			if (jogador == undefined) {
+				return 0
+			}
+			return jogador.pontos
+		},
+		terminei() {
+			if (this.jogadores.length === 0) {
+				return false
+			}
+			const jogador = this.jogadores.filter(j => j.id == this.id)[0]
+			if (jogador == undefined) {
+				return false
+			}
+			return jogador.terminou
 		}
     }
 })

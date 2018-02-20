@@ -98,6 +98,7 @@ const jogo = {
     },
     parar() {
         clearInterval(timer)
+        timer = null
     },
     terminarRodada() {
         this.parar()
@@ -122,6 +123,9 @@ const jogo = {
         this.jogadores = this.jogadores.filter(j => j.id !== id)
     },
     jogadorTerminou(id) {
+        if (!timer) {
+            return
+        }
         let index
         this.jogadores.forEach((j, i) => {
             if (j.id === id) {
@@ -139,14 +143,12 @@ const jogo = {
         }
     },
     jogadorConfirmou(id, pontos) {
-        console.log(`Confirmando = ID: ${id} | Pontos: ${pontos}`)
 	    this.jogadores.forEach(j => {
             if (j.id === id) {
                 j.pontos += pontos
                 j.confirmou = true
             }
         })
-        console.log(`Ainda faltam ${this.jogadores.filter(j => !j.confirmou).length} jogadores confirmar...`)
         if (this.jogadores.filter(j => !j.confirmou).length === 0) {
             this.novaRodada()
         }
@@ -221,11 +223,10 @@ io.on("connection", socket => {
     socket.on("entrar", nome => {
         jogo.adicionarJogador(socket.id, nome)
         io.emit("atualizarJogadores", jogo.jogadores)
-        if (jogo.rodadas === 0) {
-            jogo.novaRodada()
-            return
-        }
         socket.emit("novaRodada", jogo)
+        if (jogo.rodadas === 0 && jogo.jogadores.length === 2) {
+            jogo.novaRodada()
+        }
     })
 
     socket.on("comecar", () => {

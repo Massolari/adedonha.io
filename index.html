@@ -10,117 +10,96 @@
 	<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
 	<link rel="stylesheet" href="/bootstrap-vue/dist/bootstrap-vue.css">
 	<script src="/bootstrap-vue/dist/bootstrap-vue.js"></script>
-	<style type="text/css">
-		/* Note: Try to remove the following lines to see the effect of CSS positioning */
-		.affixIn {
-			background: #B8C1C8;
-			border-bottom: 1px solid #989EA4;
-			border-top: 1px solid #717D85;
-			color: #FFF;
-			margin: 0;
-			padding: 2px 0 0 12px;
-			position: -webkit-sticky;
-			position: sticky;
-			top: -1px;
-		}
-
-		.affixOut {
-			font: bold 20px/45px Helvetica, Arial, sans-serif;
-			margin: 0;
-			padding: 0 0 0 12px;
-			white-space: nowrap;
-		}
-	</style>
 </head>
 
 <body>
 	<script>const socket = io()</script>
-	<!--nav class="navbar navbar-inverse" data-spy="affix" data-offset-top="197">
-	<p class="nav navbar-nav">Nav test</p>
-	</nav-->
 	<div id="app" class="container-fluid">
+		<nav class="navbar fixed-top navbar-light bg-light" v-if="logado && jogoCriado">
+			<b-progress :value="barraTempo" :max="barraTempoMax" :variant="corBarraTempo" show-value :animated="barraTempo < barraTempoMax" style="width: 100%"></b-progress>
+		</nav>
+		<div class="row" :style="{ 'padding-top': logado && jogoCriado ? '40px' : '0px' }">
+			<div class="col-sm-6">
+				<h2>Adedonha</h2>
 
-		<div class="row">
-		    <div class="col-sm-6"><h2>Adedonha</h2>
-
-		<div v-if="!logado">
-			<form @submit.prevent="logar">
-				<div class="input-group">
-					<div class="input-group-prepend">
-						<span class="input-group-text">Nome</span>
-					</div>
-					<input type="text" class="form-control" v-model="nome">
-					<button :disabled="alguemCriando" class="btn btn-primary">{{ botaoEntrar }}</button>
-				</div>
-			</form>
-		</div>
-
-
-		<div v-if="logado && !jogoCriado">
-			<form @submit.prevent="criarJogo">
-				<div class="input-group" v-for="a in assuntos" :key="a.id">
-					<div class="input-group-prepend">
-						<span class="input-group-text">Nome</span>
-					</div>
-					<input type="text" class="form-control" v-model="a.nome" required>
-					<button :disabled="assuntos.length === 1" @click="removerAssunto(a.id)" type="button" class="btn btn-danger">Remover</button>
-				</div>
-				<button @click="adicionarAssunto" type="button" class="btn btn-primary">Adicionar</button>
-				<div class="input-group">
-					<div class="input-group-prepend">
-						<span class="input-group-text">Tempo</span>
-					</div>
-					<input type="text" class="form-control" v-model.number="criar.tempoCriacao" required>
-				</div>
-				<div class="card">
-					<div class="card-body">
-						<div style="font-weight: bold">Ao terminar:</div>
-						<div class="form-check">
-							<input type="checkbox" id="criarTempo" class="form-check-input" v-model="criar.tempoMetade" />
-							<label for="criarTempo" class="form-check-label">Tempo cair pela metade</label>
+				<div v-if="!logado">
+					<form @submit.prevent="logar">
+						<div class="input-group">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Nome</span>
+							</div>
+							<input type="text" class="form-control" v-model="nome">
+							<button :disabled="alguemCriando" class="btn btn-primary">{{ botaoEntrar }}</button>
 						</div>
-						<div class="form-check">
-							<input type="checkbox" id="pontosBonus" class="form-check-input" v-model="criar.pontosBonus" />
-							<label for="pontosBonus" class="form-check-label">Ganhar pontos bônus (10% do tempo atual, em segundos)</label>
+					</form>
+				</div>
+
+
+				<div v-if="logado && !jogoCriado">
+					<form @submit.prevent="criarJogo">
+						<div class="input-group" v-for="a in assuntos" :key="a.id">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Nome</span>
+							</div>
+							<input type="text" class="form-control" v-model="a.nome" required>
+							<button :disabled="assuntos.length === 1" @click="removerAssunto(a.id)" type="button" class="btn btn-danger">Remover</button>
 						</div>
+						<button @click="adicionarAssunto" type="button" class="btn btn-primary">Adicionar</button>
+						<div class="input-group">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Tempo</span>
+							</div>
+							<input type="text" class="form-control" v-model.number="criar.tempoCriacao" required>
+						</div>
+						<div class="card">
+							<div class="card-body">
+								<div style="font-weight: bold">Ao terminar:</div>
+								<div class="form-check">
+									<input type="checkbox" id="criarTempo" class="form-check-input" v-model="criar.tempoMetade" />
+									<label for="criarTempo" class="form-check-label">Tempo cair pela metade</label>
+								</div>
+								<div class="form-check">
+									<input type="checkbox" id="pontosBonus" class="form-check-input" v-model="criar.pontosBonus" />
+									<label for="pontosBonus" class="form-check-label">Ganhar pontos bônus (10% do tempo atual, em segundos)</label>
+								</div>
+							</div>
+						</div>
+						<button class="btn btn-primary">Criar</button>
+					</form>
+				</div>
+
+
+				<div v-if="logado && jogoCriado">
+					<hr />
+					<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
+					<p>Jogadores: {{ jogadores.length }}</p>
+					<h2>Letra: {{ letra }}</h2>
+					<span>Rodada: {{ rodadas }}</span>
+					<div class="input-group" v-for="a in assuntos" :key="a.id">
+						<div class="input-group-prepend">
+							<span class="input-group-text">{{ a.nome }}</span>
+						</div>
+						<input type="text" class="form-control" :disabled="fimPartida || terminei" v-model="a.resposta">
+						<div v-show="fimPartida" class="input-group-prepend">
+							<span class="input-group-text">Pontos</span>
+						</div>
+						<select v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
+							<option value="0">0</option>
+							<option value="5">5</option>
+							<option value="10">10</option>
+						</select>
 					</div>
+					<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
+					<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1 && !iniciando" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
+					<hr />
+					<h4>Ranking</h4>
+					<ol>
+						<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}${(j.confirmou) ? "Confirmou!" : ""}` }}</li>
+					</ol>
 				</div>
-				<button class="btn btn-primary">Criar</button>
-			</form>
-		</div>
-
-
-		<div v-if="logado && jogoCriado">
-			<hr />
-			<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
-			<p>Jogadores: {{ jogadores.length }}</p>
-			<h2>Letra: {{ letra }}</h2>
-			<span>Rodada: {{ rodadas }}</span>
-			<b-progress :value="barraTempo" :max="barraTempoMax" :variant="corBarraTempo" show-value animated></b-progress>
-
-			<div class="input-group" v-for="a in assuntos" :key="a.id">
-				<div class="input-group-prepend">
-					<span class="input-group-text">{{ a.nome }}</span>
-				</div>
-				<input type="text" class="form-control" :disabled="fimPartida || terminei" v-model="a.resposta">
-				<div v-show="fimPartida" class="input-group-prepend">
-					<span class="input-group-text">Pontos</span>
-				</div>
-				<select v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
-					<option value="0">0</option>
-					<option value="5">5</option>
-					<option value="10">10</option>
-				</select>
 			</div>
-			<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
-			<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1 && !iniciando" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
-			<hr />
-			<h4>Ranking</h4>
-			<ol>
-				<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}${(j.confirmou) ? "Confirmou!" : ""}` }}</li>
-			</ol>
 		</div>
-		    </div></div></div>
+	</div>
 	<script src="app.js"></script>
 </body>
 
