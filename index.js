@@ -12,6 +12,31 @@ let idSocket = 0
 
 const adedonha = {
     letras: [],
+    categorias: [
+        "Adjetivo",
+        "Doces",
+        "Fruta",
+        "Comida salgada",
+        "Animal",
+        "Ator/Atriz",
+        "Cantor/Cantora/Banda",
+        "Música",
+        "Carro",
+        "Lugar",
+        "Esporte",
+        "Jogo",
+        "Marca",
+        "Nome (masculino)",
+        "Nome (feminino)",
+        "Objeto",
+        "Personagem",
+        "Profissão",
+        "Televisão",
+        "Verbo (infinitivo)",
+        "Parte do corpo humano",
+        "Matéria/Faculdade",
+        "Cor"
+    ],
     retornarLetras(){
         return [
             "A",
