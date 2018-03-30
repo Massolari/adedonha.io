@@ -58,7 +58,8 @@ const app = new Vue({
 	    iniciando: false,
 	    criar: {
 	    	tempoMetade: false,
-	    	pontosBonus: false
+			pontosBonus: false,
+			assuntosAleatorios: false
 	    }
     },
     methods: {
@@ -88,7 +89,8 @@ const app = new Vue({
 				nome: this.nome,
 				tempo: this.criar.tempoCriacao,
 				tempoMetade: this.criar.tempoMetade,
-				pontosBonus: this.criar.pontosBonus
+				pontosBonus: this.criar.pontosBonus,
+				assuntosAleatorios: this.criar.assuntosAleatorios
 			})
 			this.barraTempo = this.barraTempoMax = this.criar.tempoCriacao
 			this.assuntos = []

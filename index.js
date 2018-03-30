@@ -12,31 +12,34 @@ let idSocket = 0
 
 const adedonha = {
     letras: [],
-    categorias: [
-        "Adjetivo",
-        "Doces",
-        "Fruta",
-        "Comida salgada",
-        "Animal",
-        "Ator/Atriz",
-        "Cantor/Cantora/Banda",
-        "Música",
-        "Carro",
-        "Lugar",
-        "Esporte",
-        "Jogo",
-        "Marca",
-        "Nome (masculino)",
-        "Nome (feminino)",
-        "Objeto",
-        "Personagem",
-        "Profissão",
-        "Televisão",
-        "Verbo (infinitivo)",
-        "Parte do corpo humano",
-        "Matéria/Faculdade",
-        "Cor"
-    ],
+    categorias: [],
+    retornarcategorias() {
+        return [
+            "Adjetivo",
+            "Doces",
+            "Fruta",
+            "Comida salgada",
+            "Animal",
+            "Ator/Atriz",
+            "Cantor/Cantora/Banda",
+            "Música",
+            "Carro",
+            "Lugar",
+            "Esporte",
+            "Jogo",
+            "Marca",
+            "Nome (masculino)",
+            "Nome (feminino)",
+            "Objeto",
+            "Personagem",
+            "Profissão",
+            "Televisão",
+            "Verbo (infinitivo)",
+            "Parte do corpo humano",
+            "Matéria/Faculdade",
+            "Cor"
+        ]
+    },
     retornarLetras(){
         return [
             "A",
@@ -78,6 +81,18 @@ const adedonha = {
         console.log(`Letras restantes: ${this.letras.length}`)
         return letra
     },
+    sortearAssuntos(assuntos) {
+        const categorias = this.retornarcategorias()
+        return assuntos.map(ass => {
+            let index = Math.floor(Math.random() * categorias.length)
+            ass.nome = categorias[index]
+            categorias.splice(index, 1)
+            if (categorias.length === 0) {
+                categorias = this.retornarcategorias()
+            }
+            return ass
+        })
+    },
     recomecar() {
         this.letras = this.retornarLetras()
     }
@@ -94,6 +109,7 @@ const jogo = {
     criando: false,
     tempoMetade: false,
     pontosBonus: false,
+    assuntosAleatorios: false,
     novaRodada() {
     	let contador = 3
     	const contagem = setInterval(() => {
@@ -109,7 +125,10 @@ const jogo = {
         	this.jogadores.forEach(j => {
             	j.confirmou = false
         	})
-        	this.letra = adedonha.sortear()
+            this.letra = adedonha.sortear()
+            if (this.assuntosAleatorios) {
+                this.assuntos = adedonha.sortearAssuntos(this.assuntos)
+            }
         	this.rodadas++
         	io.emit("novaRodada", this)
         	this.tempoAtual = this.tempo
@@ -221,6 +240,7 @@ const jogo = {
         this.criando = false
         this.tempoMetade = dados.tempoMetade
         this.pontosBonus = dados.pontosBonus
+        this.assuntosAleatorios = dados.assuntosAleatorios
     }
 }
 
