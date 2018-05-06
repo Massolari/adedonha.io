@@ -97,15 +97,37 @@ const app = new Vue({
 			this.jogoCriado = true
 		},
 		confirmarPontos() {
-			if (confirm("Deseja confirmar seus pontos?")) {
-				this.pontosConfirmados = true
-				socket.emit("confirmados", this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0))
-			}
+			swal({
+				title: 'Confirmar pontos',
+				text: "Deseja confirmar seus pontos?",
+				type: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#3085d6',
+				cancelButtonColor: '#d33',
+				confirmButtonText: 'Confirmar!',
+				cancelButtonText: 'Não!'
+			}).then((result) => {
+				if (result.value) {
+					this.pontosConfirmados = true
+					socket.emit("confirmados", this.assuntos.reduce((acc, ass) => acc + Number(ass.pontos), 0))	
+				}	
+			})
 		},
         terminar() {
-		    if (confirm("Terminou de preencher as palavras?")) {
-				socket.emit("terminei")
-	    	}
+			swal({
+				title: 'Terminar de preencher',
+				text: "Terminou de preencher as palavras?",
+				type: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#3085d6',
+				cancelButtonColor: '#d33',
+				confirmButtonText: 'Terminei!',
+				cancelButtonText: 'Ainda não!'
+			}).then((result) => {
+				if (result.value) {
+					socket.emit("terminei")
+				}	
+			})
 		}
 	},
 	computed: {
