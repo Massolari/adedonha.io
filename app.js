@@ -9,45 +9,44 @@ socket.on("jogo", jogo => {
     app.alguemCriando = jogo.criando
 })
 socket.on("atualizarJogadores", jogadores => {
+	console.log(jogadores)
     app.jogadores = jogadores
 })
 socket.on("tempo", tempo => {
     app.barraTempo = tempo
-})
-socket.on("iniciando", contagem => {
-	app.iniciando = true
-	app.letra = `${contagem}...`
-})
-socket.on("novaRodada", dados => {
-	app.iniciando = false
-	app.barraTempo = app.barraTempoMax = dados.tempo
-	app.fimPartida = false
-	app.letra = dados.letra
-	app.rodadas = dados.rodadas
-    app.assuntos = dados.assuntos.map(a => ({
-        id: a.id,
-		nome: a.nome,
-		pontos: 0,
-		resposta: ""
-    }))
-    app.jogadores = dados.jogadores
 })
 socket.on("fim", v => {
     // app.terminei = false
     app.fimPartida = v
     app.pontosConfirmados = false
 })
+
+socket.on("status", s => {
+	console.log(s)
+	app.status = s.desc
+	switch (s.desc) {
+		case "iniciando":
+			app.iniciando(s.contador)
+			break
+		case "rodada":
+			app.novaRodada(s.dados)
+			break
+		case "fim":
+			app.fimRodada(s)
+			break
+		case "criado":
+			app.criado(s.jogadores)
+	}
+})
 const app = new Vue({
     el: "#app",
     data: {
     	id: 0,
-		logado: false,
 		nome: "",
 		jogoCriado: false,
 		alguemCriando: false,
 		assuntos: [{ id: 1, nome: "", resposta: "" }],
 		tempoCriacao: 0,
-		fimPartida: false,
 		jogadores: [],
 		letra: "Aguardando...",
 		pontosConfirmados: false,
@@ -55,16 +54,38 @@ const app = new Vue({
 		barraTempoMax: 100,
 		rodadas: 0,
 	    // terminei: false,
-	    iniciando: false,
 	    criar: {
 	    	tempoMetade: false,
 			pontosBonus: false,
 			assuntosAleatorios: false
-	    }
+		},
+		status: "deslogado" // criando, inciando, 
     },
     methods: {
+		iniciando(contador) {
+			this.letra = `${contador}...`
+		},
+		novaRodada(dados) {
+			this.barraTempo = this.barraTempoMax = dados.tempo
+			this.fimPartida = false
+			this.letra = dados.letra
+			this.rodadas = dados.rodadas
+			this.assuntos = dados.assuntos.map(a => ({
+				id: a.id,
+				nome: a.nome,
+				pontos: 0,
+				resposta: ""
+			}))
+			this.jogadores = dados.jogadores
+		},
+		fimRodada(dados) {
+			this.barraTempo = s.tempo
+			this.jogadores = s.jogadores
+		},
+		criado(jogadores) {
+			this.jogadores = jogadores
+		},
         logar() {
-			this.logado = true
 			if (this.jogoCriado) {
 				socket.emit("entrar", this.nome)
 				return
@@ -94,7 +115,6 @@ const app = new Vue({
 			})
 			this.barraTempo = this.barraTempoMax = this.criar.tempoCriacao
 			this.assuntos = []
-			this.jogoCriado = true
 		},
 		confirmarPontos() {
 			swal({

@@ -113,7 +113,10 @@ const jogo = {
     novaRodada() {
     	let contador = 3
     	const contagem = setInterval(() => {
-    		io.emit("iniciando", contador)
+            io.to("jogo").emit("status", {
+                desc: "iniciando",
+                contador
+            })
     		contador--
     		if (contador >= 0) {
     			return
@@ -129,14 +132,17 @@ const jogo = {
             if (this.assuntosAleatorios) {
                 this.assuntos = adedonha.sortearAssuntos(this.assuntos)
             }
-        	this.rodadas++
-        	io.emit("novaRodada", this)
+            this.rodadas++
+            io.to("jogo").emit("status", {
+                desc: "rodada",
+                dados: this
+            })
         	this.tempoAtual = this.tempo
         	timer = setInterval(() => {
             	if (this.tempoAtual <= 0) {
                 	this.terminarRodada()
             	}
-                io.emit("tempo", this.tempoAtual--)
+                io.to("jogo").emit("tempo", this.tempoAtual--)
         	}, 1000)
         }, 1000)
     },
@@ -150,9 +156,11 @@ const jogo = {
             j.terminou = false
         })
         this.tempoAtual = this.tempo
-        io.emit("tempo", this.tempoAtual)
-        io.emit("fim", true)
-        io.emit("atualizarJogadores", this.jogadores)
+        io.to("jogo").emit("status", {
+            desc: "fim",
+            jogadoers: this.jogadores,
+            tempo: this.tempoAtual
+        })
     },
     adicionarJogador(id, nome) {
         this.jogadores.push({
@@ -200,10 +208,10 @@ const jogo = {
     jogadorSaiu(socket) {
         if (this.criando === socket.id) {
             this.criando = false
-            socket.broadcast.emit("jogo", this.dadosCriacao())
+            socket.broadcast.to("jogo").emit("jogo", this.dadosCriacao())
         }
         this.removerJogador(socket.id)
-        socket.broadcast.emit("atualizarJogadores", this.jogadores)
+        socket.broadcast.to("jogo").emit("atualizarJogadores", this.jogadores)
         if (this.jogadores.length === 0) {
             this.assuntos = []
             this.rodadas = 0
@@ -214,7 +222,10 @@ const jogo = {
             this.letra = "Aguardando..."
             this.jogadores[0].pontos = 0
             this.parar()
-            io.emit("novaRodada", jogo)
+            io.to("jogo").emit("status", {
+                desc: "rodada",
+                dados: jogo
+            })
             return
         }
         if (this.jogadores.filter(j => !j.terminou).length === 0) {
@@ -256,19 +267,31 @@ io.on("connection", socket => {
 
     socket.on("criando", () => {
         jogo.jogadorCriando(socket.id)
+        socket.emit("status", {
+            desc: "criando"
+        })
         socket.broadcast.emit("criando", true)
     })
 
     socket.on("criar", criacao => {
         jogo.jogadorCriou(criacao)
+        socket.join("jogo")
         socket.broadcast.emit("jogo", jogo.dadosCriacao())
-        io.emit("atualizarJogadores", jogo.jogadores)
+        socket.emit("status", {
+            desc: "criado",
+            jogadores: jogo.jogadores
+        })
+        // io.to("jogo").emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("entrar", nome => {
+        socket.join("jogo")
         jogo.adicionarJogador(socket.id, nome)
-        io.emit("atualizarJogadores", jogo.jogadores)
-        socket.emit("novaRodada", jogo)
+        io.to("jogo").emit("atualizarJogadores", jogo.jogadores)
+        socket.emit("status", {
+            desc: "rodada",
+            dados: jogo
+        })
         if (jogo.rodadas === 0 && jogo.jogadores.length === 2) {
             jogo.novaRodada()
         }
@@ -284,12 +307,12 @@ io.on("connection", socket => {
 
     socket.on("terminei", () => {
         jogo.jogadorTerminou(socket.id)
-	    io.emit("atualizarJogadores", jogo.jogadores)
+	    io.to("jogo").emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("confirmados", pontos => {
         jogo.jogadorConfirmou(socket.id, pontos)
-        io.emit("atualizarJogadores", jogo.jogadores)
+        io.to("jogo").emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("disconnect", () => {

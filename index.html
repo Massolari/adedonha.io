@@ -17,14 +17,14 @@
 <body>
 	<script>const socket = io()</script>
 	<div id="app" class="container-fluid">
-		<nav class="navbar fixed-top navbar-light bg-light" v-if="logado && jogoCriado">
+		<nav class="navbar fixed-top navbar-light bg-light" v-if="status === 'rodada' || status === 'criado'">
 			<b-progress :value="barraTempo" :max="barraTempoMax" :variant="corBarraTempo" show-value :animated="barraTempo < barraTempoMax" style="width: 100%"></b-progress>
 		</nav>
-		<div class="row" :style="{ 'padding-top': logado && jogoCriado ? '40px' : '0px' }">
+		<div class="row" :style="{ 'padding-top': status === 'rodada' || status === 'criado' ? '40px' : '0px' }">
 			<div class="col-sm-6">
 				<h2>Adedonha</h2>
 
-				<div v-if="!logado">
+				<div v-if="status === 'deslogado'">
 					<form @submit.prevent="logar">
 						<div class="input-group">
 							<div class="input-group-prepend">
@@ -37,7 +37,7 @@
 				</div>
 
 
-				<div v-if="logado && !jogoCriado">
+				<div v-if="status === 'criando'">
 					<form @submit.prevent="criarJogo">
 						<div class="input-group" v-for="a in assuntos" :key="a.id">
 							<div class="input-group-prepend">
@@ -75,7 +75,7 @@
 				</div>
 
 
-				<div v-if="logado && jogoCriado">
+				<div v-if="status === 'rodada' || status === 'criado'">
 					<hr />
 					<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
 					<p>Jogadores: {{ jogadores.length }}</p>
@@ -85,18 +85,18 @@
 						<div class="input-group-prepend">
 							<span class="input-group-text">{{ a.nome }}</span>
 						</div>
-						<input type="text" class="form-control" :disabled="fimPartida || terminei" v-model="a.resposta">
-						<div v-show="fimPartida" class="input-group-prepend">
+						<input type="text" class="form-control" :disabled="status === 'fim' || terminei" v-model="a.resposta">
+						<div v-show="status === 'fim'" class="input-group-prepend">
 							<span class="input-group-text">Pontos</span>
 						</div>
-						<select v-show="fimPartida" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
+						<select v-show="status === 'fim'" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
 							<option value="0">0</option>
 							<option value="5">5</option>
 							<option value="10">10</option>
 						</select>
 					</div>
-					<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="fimPartida">Confirmar pontos</button>
-					<button class="btn btn-success" v-show="!fimPartida && jogadores.length > 1 && !iniciando" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
+					<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="status === 'fim'">Confirmar pontos</button>
+					<button class="btn btn-success" v-show="status === 'rodada' || status === 'criado' && jogadores.length > 1" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
 					<hr />
 					<h4>Ranking</h4>
 					<ol>
