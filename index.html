@@ -24,88 +24,36 @@
 			<div class="col-sm-6">
 				<h2>Adedonha</h2>
 
-				<div v-if="status === 'deslogado'">
-					<form @submit.prevent="logar">
-						<div class="input-group">
-							<div class="input-group-prepend">
-								<span class="input-group-text">Nome</span>
-							</div>
-							<input type="text" class="form-control" v-model="nome">
-							<button :disabled="alguemCriando" class="btn btn-primary">{{ botaoEntrar }}</button>
-						</div>
-					</form>
-				</div>
+        <login
+          v-if="status == 'deslogado'"
+          :socket="socket"
+          @login="n => { nome = n }"
+        ></login>
 
+        <criacao
+          v-if="status === 'criando'"
+          :nome="nome"
+          :socket="socket"
+          @criar="t => { barraTempo = barraTempoMax = t }"
+        ></criacao>
 
-				<div v-if="status === 'criando'">
-					<form @submit.prevent="criarJogo">
-						<div class="input-group" v-for="a in assuntos" :key="a.id">
-							<div class="input-group-prepend">
-								<span class="input-group-text">Nome</span>
-							</div>
-							<input type="text" class="form-control" v-model="a.nome" required>
-							<button :disabled="assuntos.length === 1" @click="removerAssunto(a.id)" type="button" class="btn btn-danger">Remover</button>
-						</div>
-						<button @click="adicionarAssunto" type="button" class="btn btn-primary">Adicionar</button>
-						<div class="input-group">
-							<div class="input-group-prepend">
-								<span class="input-group-text">Tempo</span>
-							</div>
-							<input type="text" class="form-control" v-model.number="criar.tempoCriacao" required>
-						</div>
-						<div class="card">
-							<div class="card-body">
-								<div style="font-weight: bold">Ao terminar:</div>
-								<div class="form-check">
-									<input type="checkbox" id="criarTempo" class="form-check-input" v-model="criar.tempoMetade" />
-									<label for="criarTempo" class="form-check-label">Tempo cair pela metade</label>
-								</div>
-								<div class="form-check">
-									<input type="checkbox" id="pontosBonus" class="form-check-input" v-model="criar.pontosBonus" />
-									<label for="pontosBonus" class="form-check-label">Ganhar pontos bônus (10% do tempo atual, em segundos)</label>
-								</div>
-								<div class="form-check">
-									<input type="checkbox" id="assuntosAleatorios" class="form-check-input" v-model="criar.assuntosAleatorios" />
-									<label for="assuntosAleatorios" class="form-check-label">Gerar assuntos aleatórios a cada rodada</label>
-								</div>
-							</div>
-						</div>
-						<button class="btn btn-primary">Criar</button>
-					</form>
-				</div>
+        <partida
+          v-if="status === 'rodada' || status === 'criado'"
+          ref="partida"
+          :socket="socket"
+          :nome="nome"
+          :jogadores="jogadores"
+          :assuntos="assuntos"
+        ></partida>
 
-
-				<div v-if="status === 'rodada' || status === 'criado'">
-					<hr />
-					<h3>{{ this.nome }} - Pontos: {{ pontos }}</h3>
-					<p>Jogadores: {{ jogadores.length }}</p>
-					<h2>Letra: {{ letra }}</h2>
-					<span>Rodada: {{ rodadas }}</span>
-					<div class="input-group" v-for="a in assuntos" :key="a.id">
-						<div class="input-group-prepend">
-							<span class="input-group-text">{{ a.nome }}</span>
-						</div>
-						<input type="text" class="form-control" :disabled="status === 'fim' || terminei" v-model="a.resposta">
-						<div v-show="status === 'fim'" class="input-group-prepend">
-							<span class="input-group-text">Pontos</span>
-						</div>
-						<select v-show="status === 'fim'" :disabled="pontosConfirmados || a.resposta.trim().length === 0" class="form-control" v-model="a.pontos">
-							<option value="0">0</option>
-							<option value="5">5</option>
-							<option value="10">10</option>
-						</select>
-					</div>
-					<button @click="confirmarPontos" :disabled="pontosConfirmados" class="btn btn-success" v-show="status === 'fim'">Confirmar pontos</button>
-					<button class="btn btn-success" v-show="status === 'rodada' || status === 'criado' && jogadores.length > 1" :disabled="terminei" @click="terminar">{{ terminei ? "Aguardando os outros jogadores..." : "Terminei" }}</button>
-					<hr />
-					<h4>Ranking</h4>
-					<ol>
-						<li v-for="j in jogadoresOrdenados">{{ `${j.nome}  - Pontos: ${j.pontos} ${(j.terminou) ? "Terminou!" : ""}${(j.confirmou) ? "Confirmou!" : ""}` }}</li>
-					</ol>
-				</div>
 			</div>
 		</div>
 	</div>
+	<script src="components/ranking.js"></script>
+	<script src="components/pontos.js"></script>
+	<script src="components/partida.js"></script>
+	<script src="components/criacao.js"></script>
+	<script src="components/login.js"></script>
 	<script src="app.js"></script>
 </body>
 
