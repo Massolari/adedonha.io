@@ -40,7 +40,7 @@ const adedonha = {
             "Cor"
         ]
     },
-    retornarLetras(){
+    retornarLetras() {
         return [
             "A",
             "B",
@@ -111,33 +111,33 @@ const jogo = {
     pontosBonus: false,
     assuntosAleatorios: false,
     novaRodada() {
-    	let contador = 3
-    	const contagem = setInterval(() => {
-    		io.emit("iniciando", contador)
-    		contador--
-    		if (contador >= 0) {
-    			return
-    		}
-    		clearInterval(contagem)
-        	if (this.rodadas === 0) {
-            	adedonha.recomecar()
-        	}
-        	this.jogadores.forEach(j => {
-            	j.confirmou = false
-        	})
+        let contador = 3
+        const contagem = setInterval(() => {
+            io.emit("iniciando", contador)
+            contador--
+            if (contador >= 0) {
+                return
+            }
+            clearInterval(contagem)
+            if (this.rodadas === 0) {
+                adedonha.recomecar()
+            }
+            this.jogadores.forEach(j => {
+                j.confirmou = false
+            })
             this.letra = adedonha.sortear()
             if (this.assuntosAleatorios) {
                 this.assuntos = adedonha.sortearAssuntos(this.assuntos)
             }
-        	this.rodadas++
-        	io.emit("novaRodada", this)
-        	this.tempoAtual = this.tempo
-        	timer = setInterval(() => {
-            	if (this.tempoAtual <= 0) {
-                	this.terminarRodada()
-            	}
+            this.rodadas++
+            io.emit("novaRodada", this)
+            this.tempoAtual = this.tempo
+            timer = setInterval(() => {
+                if (this.tempoAtual <= 0) {
+                    this.terminarRodada()
+                }
                 io.emit("tempo", this.tempoAtual--)
-        	}, 1000)
+            }, 1000)
         }, 1000)
     },
     parar() {
@@ -187,7 +187,7 @@ const jogo = {
         }
     },
     jogadorConfirmou(id, pontos) {
-	    this.jogadores.forEach(j => {
+        this.jogadores.forEach(j => {
             if (j.id === id) {
                 j.pontos += pontos
                 j.confirmou = true
@@ -284,7 +284,7 @@ io.on("connection", socket => {
 
     socket.on("terminei", () => {
         jogo.jogadorTerminou(socket.id)
-	    io.emit("atualizarJogadores", jogo.jogadores)
+        io.emit("atualizarJogadores", jogo.jogadores)
     })
 
     socket.on("confirmados", pontos => {
@@ -297,6 +297,8 @@ io.on("connection", socket => {
     })
 })
 
-http.listen(3000, () => {
-    console.log("Listening on port 3000...")
+const port = process.env.PORT || 3000
+
+http.listen(port, () => {
+    console.log(`Listening on port ${port}...`)
 })
